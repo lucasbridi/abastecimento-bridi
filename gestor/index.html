@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1d4f8f">
+<title>Painel da frota</title>
+<!--
+  Painel do gestor da frota Bridi. Só mostra dados para código de gestor; tudo vem da ação "painel"
+  da função "abastecimento" do Supabase. Para testar com a API simulada: index.html?api=http://127.0.0.1:8767
+-->
+<style>
+:root {
+  --bg: #f2f5f3; --surface: #ffffff; --surface-2: #e8eeeb; --line: #c9d4cf; --fg: #16201c; --muted: #56655f;
+  --accent: #1d4f8f; --accent-fg: #ffffff; --accent-soft: #dde7f5;
+  --ok: #1d7a4b; --ok-soft: #dcf0e4; --warn: #8a5200; --warn-soft: #fbead0; --crit: #b3261e; --crit-soft: #f9dedb;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1513; --surface: #172120; --surface-2: #1e2927; --line: #34433f; --fg: #e5eeea; --muted: #9aaba4;
+    --accent: #84aeea; --accent-fg: #0f1513; --accent-soft: #1d2d46;
+    --ok: #5cc68d; --ok-soft: #163428; --warn: #f0b04a; --warn-soft: #382a11; --crit: #f08a80; --crit-soft: #3d1a17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1513; --surface: #172120; --surface-2: #1e2927; --line: #34433f; --fg: #e5eeea; --muted: #9aaba4;
+  --accent: #84aeea; --accent-fg: #0f1513; --accent-soft: #1d2d46;
+  --ok: #5cc68d; --ok-soft: #163428; --warn: #f0b04a; --warn-soft: #382a11; --crit: #f08a80; --crit-soft: #3d1a17;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 22px; }
+h1, h2 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.topo .quem { font-size: 14px; color: var(--muted); }
+.acoes { display: flex; gap: 14px; align-items: center; }
+.link { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; padding: 6px 0; cursor: pointer; }
+.cartao { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+.entrar { max-width: 420px; width: 100%; justify-self: center; }
+.campo { display: grid; gap: 6px; }
+.campo > label { font-weight: 600; }
+.ajuda { font-size: 13px; color: var(--muted); }
+input[type=password] {
+  width: 100%; height: 60px; padding: 0 14px; font: inherit; font-size: 26px; letter-spacing: .4em; text-align: center;
+  color: var(--fg); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lembrar { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.lembrar input { width: 20px; height: 20px; }
+.btn { width: 100%; min-height: 52px; border: 0; border-radius: 12px; font: inherit; font-weight: 700; font-size: 17px; background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+.btn:disabled { opacity: .6; }
+.aviso { padding: 12px 14px; border-radius: 10px; font-size: 15px; }
+.aviso.erro { background: var(--crit-soft); color: var(--crit); font-weight: 600; }
+.aviso.info { background: var(--surface-2); }
+.seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; }
+.seg button { height: 42px; padding: 0 18px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.filtro { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.filtro label { font-weight: 600; }
+select { height: 40px; padding: 0 10px; font: inherit; color: var(--fg); background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; }
+.tela { display: grid; gap: 22px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 2px; align-content: start; }
+.kpi .r { color: var(--muted); font-size: 13px; }
+.kpi .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.kpi .d { color: var(--muted); font-size: 12.5px; }
+.sec { display: grid; gap: 8px; min-width: 0; }
+.sec > p { color: var(--muted); font-size: 13.5px; max-width: 80ch; }
+.rolo { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface-2); }
+td { padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.n { text-align: right; }
+td.texto { white-space: normal; min-width: 220px; }
+.placa { display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; letter-spacing: .04em; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.sub { display: block; color: var(--muted); font-size: 12.5px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.tag.crit { background: var(--crit-soft); color: var(--crit); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.neutro { background: var(--surface-2); color: var(--muted); }
+.ruim { color: var(--crit); font-weight: 650; }
+.atencao { color: var(--warn); font-weight: 650; }
+.vazio { padding: 14px; color: var(--muted); }
+.fotos { display: flex; gap: 6px; }
+.btn-foto { border: 1px solid var(--line); background: var(--bg); color: var(--accent); border-radius: 8px; padding: 1px 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.calor td.c { text-align: right; min-width: 56px; }
+.calor td.zero { color: var(--muted); }
+.notas { font-size: 13px; color: var(--muted); max-width: 85ch; }
+.notas summary { cursor: pointer; color: var(--fg); }
+.notas ul { padding-left: 18px; display: grid; gap: 4px; }
+.rodape { font-size: 12.5px; color: var(--muted); }
+.carregando { opacity: .55; pointer-events: none; }
+</style>
+</head>
+<body>
+<main>
+  <header class="topo">
+    <div>
+      <h1>Painel da frota</h1>
+      <p class="quem" id="quem">Bridi Madeiras · gestão</p>
+    </div>
+    <div class="acoes" id="acoes" hidden>
+      <button class="link" id="atualizar">Atualizar</button>
+      <button class="link" id="sair">Sair</button>
+    </div>
+  </header>
+
+  <section class="cartao entrar" id="tela-entrar">
+    <div class="campo">
+      <label for="codigo">Código de gestor</label>
+      <input id="codigo" class="num" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <span class="ajuda">O mesmo código de 6 números do formulário de abastecimento. Só código de gestor abre o painel.</span>
+    </div>
+    <label class="lembrar"><input type="checkbox" id="lembrar"> Lembrar neste aparelho</label>
+    <div class="aviso erro" id="erro-entrar" hidden></div>
+    <button class="btn" id="btn-entrar">Entrar</button>
+  </section>
+
+  <nav id="abas" hidden>
+    <div class="seg" role="group" aria-label="Assunto">
+      <button aria-pressed="true" data-aba="abastecimento">Abastecimento</button>
+      <button aria-pressed="false" data-aba="rotas">Rotas (GPS)</button>
+    </div>
+  </nav>
+
+  <div class="aviso erro" id="erro-geral" hidden></div>
+  <section class="tela" id="tela-abastecimento" hidden></section>
+  <section class="tela" id="tela-rotas" hidden></section>
+  <p class="rodape" id="rodape" hidden></p>
+</main>
+
+<script>
+(() => {
+  const API_PADRAO = "https://zjodewyhotujohbtccal.supabase.co/functions/v1/abastecimento";
+  const API = new URLSearchParams(location.search).get("api") || API_PADRAO;
+  const CHAVE = "bridi-painel-codigo";
+  const TZ = "America/Sao_Paulo";
+  const LOCAIS = { vila_velha: "Vila Velha", guarapari: "BM Guarapari" };
+  const LIMITE_VEL = 90;
+  const TOLERANCIA_L = 1;
+  const $ = (id) => document.getElementById(id);
+  const est = { codigo: "", dados: null, aba: "abastecimento", mes: null, semana: null };
+
+  // ---------- armazenamento (pode faltar em janela privada) ----------
+  const guardar = {
+    ler() { for (const s of [sessionStorage, localStorage]) { try { const v = s.getItem(CHAVE); if (v) return v; } catch { /* sem armazenamento */ } } return ""; },
+    gravar(v, lembrar) {
+      for (const s of [sessionStorage, localStorage]) { try { s.removeItem(CHAVE); } catch { /* nada */ } }
+      if (!v) return;
+      try { (lembrar ? localStorage : sessionStorage).setItem(CHAVE, v); } catch { /* nada */ }
+    },
+  };
+
+  // ---------- formatos ----------
+  const formatos = {};
+  const nf = (c) => formatos[c] ??= new Intl.NumberFormat("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+  const num = (v, c = 0) => (v == null || v === "" || !Number.isFinite(+v)) ? "—" : nf(c).format(+v);
+  const reais = (v) => (v == null || !Number.isFinite(+v)) ? "—" : "R$ " + num(v, 2);
+  const dataCurta = (iso) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit" });
+  const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const mesDe = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit" }).format(new Date(iso));
+  const nomeMes = (m) => { const [a, mm] = m.split("-").map(Number); const t = new Date(Date.UTC(a, mm - 1, 15)).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const soma = (arr, f) => arr.reduce((s, x) => s + (Number(f(x)) || 0), 0);
+  const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
+  // dia "aaaa-mm-dd" -> segunda-feira da semana, "aaaa-mm-dd"
+  const segunda = (dia) => { const [a, m, d] = dia.split("-").map(Number); const t = new Date(Date.UTC(a, m - 1, d)); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+  const maisDias = (dia, n) => { const [a, m, d] = dia.split("-").map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const ddmm = (dia) => dia.slice(8, 10) + "/" + dia.slice(5, 7);
+  const nomeDia = (dia) => { const [a, m, d] = dia.split("-").map(Number); return ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][new Date(Date.UTC(a, m - 1, d)).getUTCDay()] + " " + ddmm(dia); };
+
+  // ---------- montar elementos sem innerHTML (os textos vêm do formulário) ----------
+  function el(tag, props = {}, ...filhos) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === "class") e.className = v;
+      else if (k === "text") e.textContent = v;
+      else if (k === "style") e.style.cssText = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const f of filhos.flat()) if (f != null && f !== false) e.append(f instanceof Node ? f : String(f));
+    return e;
+  }
+  const placa = (p, sub) => el("span", {}, el("span", { class: "placa", text: p }), sub ? el("span", { class: "sub", text: sub }) : null);
+  const tag = (texto, tipo = "neutro") => el("span", { class: "tag " + tipo, text: texto });
+  const kpi = (rotulo, valor, detalhe) => el("div", { class: "kpi" }, el("span", { class: "r", text: rotulo }), el("span", { class: "v", text: valor }), detalhe ? el("span", { class: "d", text: detalhe }) : null);
+  const secao = (titulo, explica, corpo) => el("section", { class: "sec" }, el("h2", { text: titulo }), explica ? el("p", { text: explica }) : null, corpo);
+
+  // tabela: colunas [{t: título, n: numérica}], linhas: arrays de células (texto, nó ou {v, class})
+  function tabela(colunas, linhas, vazio, extraClasse) {
+    if (!linhas.length) return el("div", { class: "rolo" }, el("p", { class: "vazio", text: vazio }));
+    const thead = el("thead", {}, el("tr", {}, colunas.map((c) => el("th", { class: c.n ? "n" : null, text: c.t }))));
+    const tbody = el("tbody", {}, linhas.map((l) => el("tr", {}, l.map((cel, i) => {
+      const o = (cel && typeof cel === "object" && !(cel instanceof Node)) ? cel : { v: cel };
+      const cls = [colunas[i].n ? "n" : "", colunas[i].texto ? "texto" : "", o.class || ""].join(" ").trim() || null;
+      return el("td", { class: cls, style: o.style }, o.v ?? "—");
+    }))));
+    return el("div", { class: "rolo" }, el("table", { class: extraClasse || null }, thead, tbody));
+  }
+
+  // ---------- API ----------
+  async function chamar(acao, extra = {}) {
+    let r;
+    try {
+      r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ acao, codigo: est.codigo, ...extra }) });
+    } catch {
+      throw Object.assign(new Error("Sem conexão. Confira a internet e tente de novo."), { status: 0 });
+    }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw Object.assign(new Error(j.erro || "Erro no servidor."), { status: r.status });
+    return j.dados;
+  }
+
+  async function abrirFoto(caminho) {
+    const janela = window.open("", "_blank");  // abre já no clique, senão o navegador bloqueia
+    try {
+      const { url } = await chamar("foto", { caminho });
+      if (janela) janela.location.href = url; else location.href = url;
+    } catch (e) {
+      if (janela) janela.close();
+      alert(e.message);
+    }
+  }
+  const fotos = (pares) => {
+    const bts = pares.filter(([, c]) => c).map(([nome, c]) => el("button", { class: "btn-foto", type: "button", onclick: () => abrirFoto(c), text: nome }));
+    return bts.length ? el("span", { class: "fotos" }, bts) : "—";
+  };
+
+  // ---------- entrar ----------
+  async function carregar() {
+    $("erro-geral").hidden = true;
+    document.querySelector("main").classList.add("carregando");
+    try {
+      est.dados = await chamar("painel");
+      $("tela-entrar").hidden = true;
+      $("abas").hidden = false; $("acoes").hidden = false; $("rodape").hidden = false;
+      $("quem").textContent = est.dados.nome + " · gestão da frota";
+      $("rodape").textContent = "Atualizado em " + dataHora(est.dados.gerado_em) + ". Dados do formulário de abastecimento e dos relatórios do Fulltrack carregados no banco.";
+      desenhar();
+      return true;
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) { sair(); mostrarErroEntrar(e.status === 403 ? "Este código não é de gestor. Peça um código de gestor." : e.message); }
+      else if (est.dados) { $("erro-geral").textContent = e.message; $("erro-geral").hidden = false; }
+      else mostrarErroEntrar(e.message);
+      return false;
+    } finally {
+      document.querySelector("main").classList.remove("carregando");
+    }
+  }
+  function mostrarErroEntrar(msg) { $("erro-entrar").textContent = msg; $("erro-entrar").hidden = false; }
+  function sair() {
+    est.codigo = ""; est.dados = null; guardar.gravar("");
+    $("tela-entrar").hidden = false;
+    for (const id of ["abas", "acoes", "rodape", "tela-abastecimento", "tela-rotas", "erro-geral"]) $(id).hidden = true;
+    $("quem").textContent = "Bridi Madeiras · gestão";
+  }
+  $("btn-entrar").addEventListener("click", async () => {
+    const c = $("codigo").value.replace(/\D/g, "");
+    $("erro-entrar").hidden = true;
+    if (c.length !== 6) return mostrarErroEntrar("O código tem 6 números.");
+    est.codigo = c;
+    $("btn-entrar").disabled = true;
+    if (await carregar()) { guardar.gravar(c, $("lembrar").checked); $("codigo").value = ""; }
+    $("btn-entrar").disabled = false;
+  });
+  $("codigo").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-entrar").click(); });
+  $("sair").addEventListener("click", sair);
+  $("atualizar").addEventListener("click", carregar);
+  for (const b of document.querySelectorAll("#abas button")) {
+    b.addEventListener("click", () => { est.aba = b.dataset.aba; desenhar(); });
+  }
+
+  function desenhar() {
+    for (const b of document.querySelectorAll("#abas button")) b.setAttribute("aria-pressed", String(b.dataset.aba === est.aba));
+    $("tela-abastecimento").hidden = est.aba !== "abastecimento";
+    $("tela-rotas").hidden = est.aba !== "rotas";
+    if (est.aba === "abastecimento") desenharAbastecimento(); else desenharRotas();
+  }
+
+  // ---------- aba Abastecimento ----------
+  function desenharAbastecimento() {
+    const d = est.dados;
+    const raiz = $("tela-abastecimento");
+    const meses = [...new Set([mesDe(new Date().toISOString()), ...d.lancamentos.map((l) => mesDe(l.data_hora))])].sort().reverse();
+    if (!meses.includes(est.mes)) est.mes = meses[0];
+    const m = est.mes;
+    const L = d.lancamentos.filter((l) => mesDe(l.data_hora) === m);
+    const patio = L.filter((l) => l.origem === "patio"), estrada = L.filter((l) => l.origem === "estrada");
+    const litrosEstrada = soma(estrada, (l) => l.litros), gasto = soma(estrada, (l) => l.valor_total);
+    const doMes = d.meses.filter((x) => String(x.mes).slice(0, 7) === m);
+    const kmlFrota = soma(doMes, (x) => x.litros) ? soma(doMes, (x) => x.km) / soma(doMes, (x) => x.litros) : null;
+    const alertasMes = d.alertas_consumo.filter((a) => mesDe(a.fim) === m);
+    const veic = new Map(d.veiculos.map((v) => [v.placa, v]));
+    const ref = new Map(d.referencia.map((r) => [r.placa, r]));
+    const localVisita = new Map(d.visitas.map((v) => [v.id, v.local]));
+
+    const filtro = el("div", { class: "filtro" },
+      el("label", { for: "mes", text: "Mês" }),
+      el("select", { id: "mes", onchange: (e) => { est.mes = e.target.value; desenharAbastecimento(); } },
+        meses.map((x) => el("option", { value: x, selected: x === m, text: nomeMes(x) }))));
+
+    const kpis = el("div", { class: "kpis" },
+      kpi("Litros no pátio", num(soma(patio, (l) => l.litros), 0), plural(patio.length, "lançamento", "lançamentos") + " do caminhão-tanque"),
+      kpi("Litros na estrada", num(litrosEstrada, 0), plural(estrada.length, "abastecimento", "abastecimentos") + " em posto"),
+      kpi("Gasto na estrada", reais(gasto), litrosEstrada ? "média " + reais(gasto / litrosEstrada) + " por litro" : "sem lançamento"),
+      kpi("Média da frota", kmlFrota ? num(kmlFrota, 2) + " km/l" : "—", doMes.length ? plural(soma(doMes, (x) => x.trechos), "trecho", "trechos") + " tanque cheio a tanque cheio" : "precisa de 2 tanques cheios por veículo"),
+      kpi("Consumo abaixo do esperado", String(alertasMes.length), alertasMes.length ? num(soma(alertasMes, (a) => a.litros_a_mais), 0) + " litros a mais que a referência" : "nenhum trecho no mês"));
+
+    // consumo por veículo
+    const ultimoKm = new Map();
+    for (const l of d.lancamentos) if (l.hodometro != null && !(ultimoKm.get(l.placa) > +l.hodometro)) ultimoKm.set(l.placa, +l.hodometro);
+    const linhasConsumo = d.veiculos.filter((v) => v.categoria === "veiculo").map((v) => {
+      const cm = doMes.find((x) => x.placa === v.placa);
+      const r = ref.get(v.placa);
+      const kml = cm ? +cm.km_l : null, rv = r && r.referencia != null ? +r.referencia : null;
+      const dif = kml != null && rv ? (kml / rv - 1) * 100 : null;
+      return { v, cm, r, kml, rv, dif, litros: soma(L.filter((l) => l.placa === v.placa), (l) => l.litros) };
+    }).sort((a, b) => (a.dif == null) - (b.dif == null) || (a.dif ?? 0) - (b.dif ?? 0) || (b.litros - a.litros) || a.v.placa.localeCompare(b.v.placa));
+    const fonte = (r) => !r || r.referencia == null ? "sem referência ainda" : r.fonte === "propria" ? "média própria, " + r.trechos_90d + " trechos" : "pesquisa (provisória)";
+    const consumo = tabela(
+      [{ t: "Veículo" }, { t: "km/l no mês", n: 1 }, { t: "Referência", n: 1 }, { t: "Diferença", n: 1 }, { t: "Km no mês", n: 1 }, { t: "Litros no mês", n: 1 }, { t: "Último km", n: 1 }],
+      linhasConsumo.map(({ v, cm, r, kml, rv, dif, litros }) => [
+        placa(v.placa, [v.modelo, v.rastreado ? null : "sem rastreador"].filter(Boolean).join(" · ")),
+        kml != null ? num(kml, 2) : { v: "—", class: "muted" },
+        { v: el("span", {}, rv != null ? num(rv, 2) : "—", el("span", { class: "sub", text: fonte(r) })) },
+        dif == null ? "—" : { v: (dif > 0 ? "+" : "") + num(dif, 0) + "%", class: dif <= -15 ? "ruim" : dif <= -5 ? "atencao" : "" },
+        cm ? num(cm.km, 0) : "—",
+        litros ? num(litros, 0) : "—",
+        ultimoKm.has(v.placa) ? num(ultimoKm.get(v.placa), 0) : "—",
+      ]),
+      "Nenhum veículo cadastrado.");
+
+    const maquinas = d.veiculos.filter((v) => v.categoria === "maquina").map((v) => [v, soma(L.filter((l) => l.placa === v.placa), (l) => l.litros)]).filter(([, l]) => l > 0);
+
+    const alertas = tabela(
+      [{ t: "Veículo" }, { t: "Trecho" }, { t: "Km", n: 1 }, { t: "Litros", n: 1 }, { t: "km/l", n: 1 }, { t: "Referência", n: 1 }, { t: "Queda", n: 1 }, { t: "Litros a mais", n: 1 }],
+      d.alertas_consumo.map((a) => [
+        placa(a.placa), dataCurta(a.inicio) + " a " + dataCurta(a.fim), num(a.km, 0), num(a.litros, 1),
+        { v: num(a.km_l, 2), class: "ruim" }, el("span", {}, num(a.referencia, 2), el("span", { class: "sub", text: a.fonte === "propria" ? "média própria" : "pesquisa" })),
+        num(a.queda_pct, 0) + "%", num(a.litros_a_mais, 0),
+      ]),
+      "Nenhum trecho abaixo do esperado nos últimos 90 dias.");
+
+    const conferir = d.trechos.filter((t) => t.conferir);
+    const kmConferir = tabela(
+      [{ t: "Veículo" }, { t: "Trecho" }, { t: "Km no início", n: 1 }, { t: "Km no fim", n: 1 }, { t: "Diferença", n: 1 }],
+      conferir.map((t) => [placa(t.placa), dataCurta(t.inicio) + " a " + dataCurta(t.fim), num(t.km_inicio, 0), num(t.km_fim, 0), { v: num(t.km, 0), class: +t.km <= 0 ? "ruim" : "" }]),
+      "");
+
+    // visitas do caminhão-tanque
+    const visitas = tabela(
+      [{ t: "Pátio" }, { t: "Chegada" }, { t: "Saída" }, { t: "Encerrante (L)", n: 1 }, { t: "Comprovante S10", n: 1 }, { t: "Lançado S10", n: 1 }, { t: "Comprovante S500", n: 1 }, { t: "Lançado S500", n: 1 }, { t: "Conferência", texto: 1 }, { t: "Fotos" }],
+      d.visitas.map((v) => {
+        const aberta = !v.saida;
+        const enc = aberta ? null : +v.encerrante_fim - +v.encerrante_inicio;
+        const comp = (+v.papel_s10_litros || 0) + (+v.papel_s500_litros || 0);
+        const difs = [];
+        if (!aberta) {
+          if (Math.abs(enc - comp) > TOLERANCIA_L) difs.push("encerrante " + num(enc, 0) + " L x comprovante " + num(comp, 0) + " L");
+          for (const [t, c, l] of [["S10", v.papel_s10_litros, v.lancado_s10], ["S500", v.papel_s500_litros, v.lancado_s500]]) {
+            const dd = +l - +c;
+            if (Math.abs(dd) > TOLERANCIA_L) difs.push(t + ": lançado " + (dd > 0 ? num(dd, 0) + " L a mais" : num(-dd, 0) + " L a menos") + " que o comprovante");
+          }
+        }
+        return [
+          LOCAIS[v.local] || v.local, dataHora(v.chegada), aberta ? tag("aberta", "warn") : dataHora(v.saida),
+          aberta ? "—" : num(enc, 1), aberta ? "—" : num(v.papel_s10_litros, 1), num(v.lancado_s10, 1),
+          aberta ? "—" : num(v.papel_s500_litros, 1), num(v.lancado_s500, 1),
+          aberta ? el("span", { class: "muted", text: "em andamento" }) : difs.length ? el("span", { class: "atencao", text: difs.join("; ") }) : tag("confere", "ok"),
+          fotos([["chegada", v.foto_chegada], ["saída", v.foto_saida], ["comprovante", v.foto_comprovante]]),
+        ];
+      }),
+      "Nenhuma visita do caminhão-tanque registrada ainda.");
+
+    // lançamentos do mês
+    const onde = (l) => l.origem === "patio"
+      ? "Pátio " + (LOCAIS[localVisita.get(l.visita_id)] || "")
+      : el("span", {}, "Estrada", l.posto ? el("span", { class: "sub", text: l.posto }) : null);
+    const lancs = tabela(
+      [{ t: "Quando" }, { t: "Veículo" }, { t: "Onde" }, { t: "Diesel" }, { t: "Litros", n: 1 }, { t: "Km", n: 1 }, { t: "Valor", n: 1 }, { t: "R$/L", n: 1 }, { t: "Quem" }, { t: "Fotos" }],
+      L.slice(0, 300).map((l) => [
+        dataHora(l.data_hora), placa(l.placa), onde(l), l.diesel || "—", num(l.litros, 1),
+        l.hodometro == null ? "—" : el("span", {}, num(l.hodometro, 0), l.km_conferir ? el("span", { class: "sub" }, tag("conferir km", "warn")) : null),
+        l.origem === "estrada" ? reais(l.valor_total) : "—",
+        l.preco_litro != null ? num(l.preco_litro, 2) : "—",
+        el("span", {}, l.registrado_por || "—", l.origem === "estrada" && !l.tanque_cheio ? el("span", { class: "sub", text: "tanque não completado" }) : null),
+        fotos([["painel", l.foto_painel], ["nota", l.foto_documento]]),
+      ]),
+      "Nenhum abastecimento lançado em " + nomeMes(m).toLowerCase() + ".");
+
+    raiz.replaceChildren(
+      filtro, kpis,
+      secao("Consumo por veículo", "km/l pelo método tanque cheio a tanque cheio. A referência é a média própria dos últimos 90 dias quando há 3 trechos ou mais; antes disso, a pesquisa por modelo. Diferença em vermelho: 15% ou mais abaixo da referência.", consumo),
+      maquinas.length ? secao("Máquinas", "Sem hodômetro: só os litros do mês.", tabela([{ t: "Máquina" }, { t: "Litros no mês", n: 1 }], maquinas.map(([v, l]) => [placa(v.placa, v.modelo), num(l, 0)]), "")) : null,
+      secao("Consumo abaixo do esperado", "Trechos dos últimos 90 dias com km/l mais de 15% abaixo da referência. É uma pergunta para conferir (carga, trajeto, km digitado), não uma acusação.", alertas),
+      conferir.length ? secao("Km para conferir", "Trechos fora da média: o km foi enviado mesmo menor que o anterior ou com salto acima de 3.000 km.", kmConferir) : null,
+      secao("Caminhão-tanque", "Encerrante da bomba x comprovante do distribuidor x soma dos lançamentos de cada diesel. Diferença acima de 1 litro aparece em destaque.", visitas),
+      secao("Lançamentos de " + nomeMes(m).toLowerCase(), L.length > 300 ? "Mostrando os 300 mais recentes de " + L.length + "." : null, lancs),
+    );
+  }
+
+  // ---------- aba Rotas ----------
+  function desenharRotas() {
+    const { dias, alertas } = est.dados.rotas;
+    const raiz = $("tela-rotas");
+    if (!dias.length) {
+      raiz.replaceChildren(el("div", { class: "aviso info", text: "Nenhuma semana do GPS carregada no banco nos últimos 84 dias. Exporte o Histórico de posições do Fulltrack, rode o resumo e a carga (analise/resumo_frota.py e analise/carregar_banco.py)." }));
+      return;
+    }
+    const semanas = [...new Set(dias.map((r) => segunda(r.dia)))].sort().reverse();
+    if (!semanas.includes(est.semana)) est.semana = semanas[0];
+    const s = est.semana, fim = maisDias(s, 6);
+    const D = dias.filter((r) => r.dia >= s && r.dia <= fim);
+    const A = alertas.filter((a) => { const dia = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(a.quando)); return dia >= s && dia <= fim; });
+    const rotulo = (x) => ddmm(x) + " a " + ddmm(maisDias(x, 6)) + "/" + maisDias(x, 6).slice(0, 4);
+
+    const filtro = el("div", { class: "filtro" },
+      el("label", { for: "semana", text: "Semana" }),
+      el("select", { id: "semana", onchange: (e) => { est.semana = e.target.value; desenharRotas(); } },
+        semanas.map((x) => el("option", { value: x, selected: x === s, text: rotulo(x) }))));
+
+    const porPlaca = [...new Set(D.map((r) => r.placa))].map((p) => {
+      const R = D.filter((r) => r.placa === p);
+      const mov = soma(R, (r) => r.min_em_movimento) / 60, lig = soma(R, (r) => r.min_ligado_parado) / 60;
+      return {
+        placa: p, km: soma(R, (r) => r.km), vel: Math.max(...R.map((r) => +r.vel_max || 0)),
+        acima: soma(R, (r) => r.min_acima_limite), mov, lig, pct: mov + lig ? 100 * lig / (mov + lig) : null,
+        fora: R.filter((r) => r.termina_fora_patio).length,
+      };
+    }).sort((a, b) => b.km - a.km);
+
+    const kpis = el("div", { class: "kpis" },
+      kpi("Km rodados", num(soma(porPlaca, (p) => p.km), 0), porPlaca.length + " caminhões rastreados"),
+      kpi("Horas em movimento", num(soma(porPlaca, (p) => p.mov), 1), "motor ligado e andando"),
+      kpi("Horas com motor ligado parado", num(soma(porPlaca, (p) => p.lig), 1), "diesel gasto sem andar"),
+      kpi("Minutos acima do limite", num(soma(porPlaca, (p) => p.acima), 0), "acima de " + LIMITE_VEL + " km/h, o máximo do CTB para caminhão"),
+      kpi("Pontos para conferir", String(A.length), A.filter((a) => a.severidade === "alta").length + " de prioridade alta"));
+
+    const semana = tabela(
+      [{ t: "Caminhão" }, { t: "Km", n: 1 }, { t: "Vel. máx. (km/h)", n: 1 }, { t: "Min. acima do limite", n: 1 }, { t: "Em movimento (h)", n: 1 }, { t: "Ligado parado (h)", n: 1 }, { t: "% ligado parado", n: 1 }, { t: "Dias que terminam fora do pátio", n: 1 }],
+      porPlaca.map((p) => [placa(p.placa), num(p.km, 0), { v: num(p.vel, 0), class: p.vel >= 100 ? "ruim" : "" }, { v: num(p.acima, 0), class: p.acima >= 30 ? "ruim" : "" }, num(p.mov, 1), num(p.lig, 1), { v: num(p.pct, 0), class: p.pct >= 50 ? "ruim" : "" }, num(p.fora, 0)]),
+      "Sem dados nesta semana.");
+
+    // km por dia (mapa de calor)
+    const datas = Array.from({ length: 7 }, (_, i) => maisDias(s, i));
+    const km = new Map(D.map((r) => [r.placa + "|" + r.dia, +r.km]));
+    const max = Math.max(1, ...D.map((r) => +r.km || 0));
+    const calor = tabela(
+      [{ t: "Caminhão" }, ...datas.map((x) => ({ t: nomeDia(x), n: 1 }))],
+      porPlaca.map((p) => [placa(p.placa), ...datas.map((x) => {
+        const v = km.get(p.placa + "|" + x);
+        if (v == null || v < 1) return { v: "·", class: "c zero" };
+        const t = Math.min(1, v / max);
+        return { v: num(v, 0), class: "c", style: "background: color-mix(in srgb, var(--accent) " + Math.round(8 + t * 62) + "%, transparent);" + (t > 0.55 ? "color: var(--bg);" : "") };
+      })]),
+      "", "calor");
+
+    const PRIO = { alta: ["Alta", "crit"], media: ["Média", "warn"], baixa: ["Baixa", "neutro"] };
+    const ordem = { alta: 0, media: 1, baixa: 2 };
+    const lista = [...A].sort((x, y) => (ordem[x.severidade] - ordem[y.severidade]) || String(x.quando).localeCompare(String(y.quando)));
+    const tabAlertas = tabela(
+      [{ t: "Quando" }, { t: "Caminhão" }, { t: "Prioridade" }, { t: "Tipo" }, { t: "O que os dados mostram", texto: 1 }, { t: "Onde" }],
+      lista.map((a) => {
+        const det = a.detalhe || {};
+        const lat = +det.latitude, lon = +det.longitude;
+        const [nome, cls] = PRIO[a.severidade] || [a.severidade, "neutro"];
+        return [
+          dataHora(a.quando), placa(a.placa), tag(nome, cls), det.tipo || a.regra.replace(/_/g, " "), det.texto || "—",
+          Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon) ? el("a", { href: "https://www.google.com/maps?q=" + lat + "," + lon, target: "_blank", rel: "noopener", text: "Ver no mapa" }) : "—",
+        ];
+      }),
+      "Nenhum alerta nesta semana.");
+
+    const notas = el("details", { class: "notas" },
+      el("summary", { text: "Como os números e os alertas são calculados" }),
+      el("ul", {},
+        el("li", { text: "Fonte: Histórico de posições do Fulltrack, exportado do painel da revenda e resumido por analise/resumo_frota.py. Só aparecem as semanas já carregadas no banco." }),
+        el("li", { text: "Tempo de cada estado é o intervalo até a posição seguinte, limitado a 10 min, para um buraco de comunicação não virar hora de motor ligado." }),
+        el("li", { text: "Pátio: raio de 300 m do ponto EMPRESA (BASE) cadastrado no Fulltrack (Vila Velha)." }),
+        el("li", { text: "Velocidade: limite de " + LIMITE_VEL + " km/h para caminhão (CTB, art. 61). Alerta com 30 min ou mais na semana acima dele, ou pico de 100 km/h." }),
+        el("li", { text: "Motor ligado parado: 15 min ou mais numa parada fora do pátio, exceto em oficina cadastrada." }),
+        el("li", { text: "Rastreador: eventos como Cabo da Bateria Violado. No pátio, sábado de manhã, pode ser a chave geral desligada." }),
+        el("li", { text: "Alertas por placa, sem nome de motorista." })));
+
+    raiz.replaceChildren(
+      filtro, kpis,
+      secao("Por caminhão", null, semana),
+      secao("Km por dia", "Quanto mais forte a cor, mais o caminhão rodou no dia. Um ponto (·) é dia sem quilômetro rodado.", calor),
+      secao("Para conferir", "Um alerta é uma pergunta para quem gere a frota, não uma acusação.", tabAlertas),
+      notas,
+    );
+  }
+
+  // ---------- início ----------
+  const salvo = guardar.ler();
+  if (salvo) { est.codigo = salvo; carregar(); }
+})();
+</script>
+</body>
+</html>
