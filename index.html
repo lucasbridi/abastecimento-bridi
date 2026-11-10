@@ -108,6 +108,15 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     <button aria-pressed="false" data-aba="visita">Caminhão-tanque</button>
   </nav>
 
+  <!-- pátio do caminhão-tanque (só pátio e gestor); o celular lembra a escolha -->
+  <div class="campo" id="campo-local" hidden>
+    <span class="rot">Pátio</span>
+    <div class="seg" id="local">
+      <button aria-pressed="false" data-v="vila_velha">Vila Velha</button>
+      <button aria-pressed="false" data-v="guarapari">BM Guarapari</button>
+    </div>
+  </div>
+
   <!-- abastecer -->
   <section class="cartao" id="tela-abastecer" hidden>
     <div class="campo" id="campo-origem">
@@ -117,11 +126,9 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
         <button aria-pressed="false" data-v="estrada">Na estrada</button>
       </div>
     </div>
-    <div class="aviso atencao" id="sem-visita" hidden>
-      Nenhuma visita do caminhão-tanque aberta. Abra a visita na aba <b>Caminhão-tanque</b> antes de lançar no pátio.
-    </div>
+    <div class="aviso atencao" id="sem-visita" hidden></div>
     <div class="campo">
-      <label for="placa">Caminhão</label>
+      <label for="placa">Veículo</label>
       <select id="placa"></select>
     </div>
     <div class="campo">
@@ -133,33 +140,18 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       <div class="aviso atencao" id="aviso-diesel" hidden>Este caminhão é S10. Confira antes de lançar S500.</div>
     </div>
 
-    <div id="bloco-patio" class="campo" style="gap:12px">
-      <div class="dupla">
-        <div class="campo">
-          <label for="med-ini">Medidor no início</label>
-          <input id="med-ini" type="text" inputmode="decimal" class="num" placeholder="0">
-        </div>
-        <div class="campo">
-          <label for="med-fim">Medidor no fim</label>
-          <input id="med-fim" type="text" inputmode="decimal" class="num" placeholder="0">
-        </div>
-      </div>
-      <span class="ajuda">Leia o medidor do diesel escolhido, no caminhão-tanque, antes e depois de abastecer.</span>
-      <div class="total"><span>Litros</span><b class="num" id="litros-patio">—</b></div>
+    <div class="campo">
+      <label for="litros">Litros</label>
+      <input id="litros" type="text" inputmode="decimal" class="num" placeholder="0">
+      <span class="ajuda" id="ajuda-litros">O que o visor da bomba marcou para este veículo.</span>
     </div>
 
     <div id="bloco-estrada" class="campo" style="gap:14px" hidden>
-      <div class="dupla">
-        <div class="campo">
-          <label for="litros">Litros</label>
-          <input id="litros" type="text" inputmode="decimal" class="num" placeholder="0">
-        </div>
-        <div class="campo">
-          <label for="preco">Preço por litro</label>
-          <input id="preco" type="text" inputmode="decimal" class="num" placeholder="0,00">
-        </div>
+      <div class="campo">
+        <label for="valor">Valor pago (R$)</label>
+        <input id="valor" type="text" inputmode="decimal" class="num" placeholder="0,00">
       </div>
-      <div class="total"><span>Total</span><b class="num" id="total-estrada">—</b></div>
+      <div class="total"><span>Preço por litro</span><b class="num" id="preco-estrada">—</b></div>
       <div class="campo">
         <label for="documento">Documento do posto</label>
         <select id="documento">
@@ -180,11 +172,11 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       </div>
     </div>
 
-    <div class="campo">
-      <label for="hodometro">Hodômetro do caminhão (km)</label>
+    <div class="campo" id="campo-km">
+      <label for="hodometro">Km atual (hodômetro)</label>
       <input id="hodometro" type="text" inputmode="decimal" class="num" placeholder="0">
     </div>
-    <div class="campo">
+    <div class="campo" id="campo-foto-painel">
       <span class="rot">Foto do painel</span>
       <label class="foto" data-foto="painel"><input type="file" accept="image/*" capture="environment"><span>Tirar foto do hodômetro</span></label>
     </div>
@@ -195,15 +187,17 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
 
   <!-- caminhão-tanque -->
   <section class="cartao" id="tela-visita" hidden>
+    <div class="aviso atencao" id="visita-sem-local" hidden>Escolha acima em qual pátio o caminhão-tanque está.</div>
     <div id="visita-chegada" class="campo" style="gap:14px">
       <h2>Chegada do caminhão-tanque</h2>
-      <p class="muted">Anote os dois medidores assim que o caminhão-tanque chegar, antes do primeiro abastecimento.</p>
-      <div class="dupla">
-        <div class="campo"><label for="ch-s10">Medidor S10</label><input id="ch-s10" type="text" inputmode="decimal" class="num"></div>
-        <div class="campo"><label for="ch-s500">Medidor S500</label><input id="ch-s500" type="text" inputmode="decimal" class="num"></div>
+      <p class="muted">Antes do primeiro abastecimento, leia o encerrante na bomba do caminhão-tanque.</p>
+      <div class="campo">
+        <label for="ch-enc">Encerrante na chegada</label>
+        <input id="ch-enc" type="text" inputmode="decimal" class="num" placeholder="Ex.: 37.813">
+        <span class="ajuda">É o número que só aumenta, não o visor que zera a cada veículo. No comprovante do distribuidor ele aparece como "Cliente inicial".</span>
       </div>
       <div class="campo">
-        <span class="rot">Foto dos medidores</span>
+        <span class="rot">Foto do encerrante</span>
         <label class="foto" data-foto="chegada"><input type="file" accept="image/*" capture="environment"><span>Tirar foto</span></label>
       </div>
       <div class="aviso erro" id="erro-chegada" hidden></div>
@@ -213,23 +207,26 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     <div id="visita-saida" class="campo" style="gap:14px" hidden>
       <h2>Saída do caminhão-tanque</h2>
       <div class="aviso info" id="visita-info"></div>
-      <div class="dupla">
-        <div class="campo"><label for="sa-s10">Medidor S10</label><input id="sa-s10" type="text" inputmode="decimal" class="num"></div>
-        <div class="campo"><label for="sa-s500">Medidor S500</label><input id="sa-s500" type="text" inputmode="decimal" class="num"></div>
-      </div>
-      <div class="campo"><label for="nf">Número da NF do distribuidor</label><input id="nf" type="text" inputmode="numeric" class="num"></div>
-      <div class="dupla">
-        <div class="campo"><label for="nf-s10">Litros S10 na NF</label><input id="nf-s10" type="text" inputmode="decimal" class="num"></div>
-        <div class="campo"><label for="nf-s500">Litros S500 na NF</label><input id="nf-s500" type="text" inputmode="decimal" class="num"></div>
-      </div>
-      <div class="dupla">
-        <div class="campo"><label for="pa-s10">S10 no papel deles</label><input id="pa-s10" type="text" inputmode="decimal" class="num"></div>
-        <div class="campo"><label for="pa-s500">S500 no papel deles</label><input id="pa-s500" type="text" inputmode="decimal" class="num"></div>
+      <div class="campo">
+        <label for="sa-enc">Encerrante na saída</label>
+        <input id="sa-enc" type="text" inputmode="decimal" class="num" placeholder="Ex.: 38.446">
       </div>
       <div class="campo">
-        <span class="rot">Foto dos medidores na saída</span>
+        <span class="rot">Foto do encerrante na saída</span>
         <label class="foto" data-foto="saida"><input type="file" accept="image/*" capture="environment"><span>Tirar foto</span></label>
       </div>
+      <h2 style="margin-top:6px">Comprovante do distribuidor</h2>
+      <div class="campo"><label for="comp">Número do comprovante</label><input id="comp" type="text" inputmode="numeric" class="num"></div>
+      <div class="dupla">
+        <div class="campo"><label for="pa-s10">Litros S10</label><input id="pa-s10" type="text" inputmode="decimal" class="num"></div>
+        <div class="campo"><label for="pa-s500">Litros S500</label><input id="pa-s500" type="text" inputmode="decimal" class="num"></div>
+      </div>
+      <span class="ajuda">Copie a coluna "Quant." do comprovante. Se não veio um dos diesel, ponha 0.</span>
+      <div class="campo">
+        <span class="rot">Foto do comprovante</span>
+        <label class="foto" data-foto="comprovante"><input type="file" accept="image/*" capture="environment"><span>Tirar foto</span></label>
+      </div>
+      <div class="campo"><label for="nf">Número da NF (se já tiver)</label><input id="nf" type="text" inputmode="numeric" class="num"></div>
       <div class="aviso erro" id="erro-saida" hidden></div>
       <button class="btn" id="btn-saida">Fechar visita</button>
     </div>
@@ -254,14 +251,24 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
   const API_PADRAO = "https://zjodewyhotujohbtccal.supabase.co/functions/v1/abastecimento";
   const API = new URLSearchParams(location.search).get("api") || API_PADRAO;
   const CHAVE = "bridi-abastecimento-codigo";
+  const CHAVE_LOCAL = "bridi-abastecimento-patio";
+  const LOCAIS = { vila_velha: "Vila Velha", guarapari: "BM Guarapari" };
 
   const $ = (id) => document.getElementById(id);
-  const est = { codigo: "", op: null, origem: "patio", diesel: null, fotos: {}, aba: "abastecer" };
 
-  const guardado = {
-    ler() { try { return localStorage.getItem(CHAVE) || ""; } catch { return ""; } },
-    gravar(v) { try { if (v) localStorage.setItem(CHAVE, v); else localStorage.removeItem(CHAVE); } catch { /* sem armazenamento */ } },
-  };
+  function lembrado(chave) {
+    return {
+      ler() { try { return localStorage.getItem(chave) || ""; } catch { return ""; } },
+      gravar(v) { try { if (v) localStorage.setItem(chave, v); else localStorage.removeItem(chave); } catch { /* sem armazenamento */ } },
+    };
+  }
+  const guardado = lembrado(CHAVE);
+  const patioGuardado = lembrado(CHAVE_LOCAL);
+  const localSalvo = patioGuardado.ler();
+
+  const est = { codigo: "", op: null, origem: "patio", diesel: null, fotos: {}, aba: "abastecer",
+    local: localSalvo in LOCAIS ? localSalvo : "" };
+  const visitaAtual = () => est.op?.visitas?.find((v) => v.local === est.local) || null;
 
   const fmt = (n, c = 0) => n.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
   // formato brasileiro: "1.234,5" e "180.960" são milhar; "1234,5" e "5.79" são decimais
@@ -374,6 +381,7 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     $("abas").hidden = !est.op || est.op.papel === "motorista" || tela === "entrar" || tela === "feito";
     if (tela === "abastecer" || tela === "visita") { est.aba = tela; marcar("abas", tela); }
     $("sair").hidden = !est.op;
+    mostrarLocal(tela);
     window.scrollTo(0, 0);
   }
 
@@ -388,30 +396,49 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     if (dados.papel === "motorista") est.origem = "estrada";
     $("campo-origem").hidden = dados.papel === "motorista";
     marcar("origem", est.origem);
+    marcar("local", est.local);
     atualizarOrigem();
     atualizarVisita();
   }
 
-  function atualizarOrigem() {
-    const patio = est.origem === "patio";
-    $("bloco-patio").hidden = !patio;
-    $("bloco-estrada").hidden = patio;
-    $("sem-visita").hidden = !(patio && !est.op?.visita);
-    $("btn-abastecer").disabled = patio && !est.op?.visita;
+  // o pátio só importa no lançamento do pátio e na visita do caminhão-tanque
+  function mostrarLocal(tela) {
+    const papelPatio = est.op && est.op.papel !== "motorista";
+    $("campo-local").hidden = !(papelPatio && (tela === "visita" || (tela === "abastecer" && est.origem === "patio")));
   }
 
+  function atualizarOrigem() {
+    const patio = est.origem === "patio";
+    const visita = visitaAtual();
+    mostrarLocal(["abastecer", "visita"].find((t) => !$("tela-" + t).hidden) || "");
+    $("sem-visita").innerHTML = est.local
+      ? `Nenhuma visita do caminhão-tanque aberta em <b>${LOCAIS[est.local]}</b>. Abra a visita na aba <b>Caminhão-tanque</b> antes de lançar no pátio.`
+      : "Escolha acima em qual pátio você está.";
+    $("sem-visita").hidden = !(patio && !visita);
+    $("btn-abastecer").disabled = patio && !visita;
+    $("bloco-estrada").hidden = patio;
+    $("ajuda-litros").textContent = patio ? "O que o visor da bomba marcou para este veículo." : "Os litros da nota ou do cupom do posto.";
+  }
+
+  const veiculoEscolhido = () => est.op?.veiculos.find((x) => x.placa === $("placa").value);
+  const ehMaquina = () => veiculoEscolhido()?.categoria === "maquina";
+
   function atualizarDiesel() {
-    const v = est.op?.veiculos.find((x) => x.placa === $("placa").value);
+    const v = veiculoEscolhido();
     $("aviso-diesel").hidden = !(v && v.diesel === "S10" && est.diesel === "S500");
+    // máquina (empilhadeira) não tem hodômetro
+    $("campo-km").hidden = ehMaquina();
+    $("campo-foto-painel").hidden = ehMaquina();
   }
 
   function atualizarVisita() {
-    const v = est.op?.visita;
-    $("visita-chegada").hidden = !!v;
+    const v = visitaAtual();
+    $("visita-sem-local").hidden = !!est.local;
+    $("visita-chegada").hidden = !!v || !est.local;
     $("visita-saida").hidden = !v;
     if (v) {
       const h = new Date(v.chegada).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-      $("visita-info").innerHTML = `Visita aberta em <b>${h}</b>. Medidores na chegada: S10 <b class="num">${fmt(Number(v.medidor_s10_inicio), 1)}</b>, S500 <b class="num">${fmt(Number(v.medidor_s500_inicio), 1)}</b>.`;
+      $("visita-info").innerHTML = `Visita aberta em ${LOCAIS[v.local]}, <b>${h}</b>. Encerrante na chegada: <b class="num">${fmt(Number(v.encerrante_inicio))}</b>.`;
     }
   }
 
@@ -462,19 +489,18 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
 
   segmentado("abas", (aba) => mostrar(aba));
   segmentado("origem", (v) => { est.origem = v; atualizarOrigem(); });
+  segmentado("local", (v) => { est.local = v; patioGuardado.gravar(v); atualizarOrigem(); atualizarVisita(); });
   segmentado("diesel", (v) => { est.diesel = v; atualizarDiesel(); });
   $("placa").addEventListener("change", () => {
-    const v = est.op?.veiculos.find((x) => x.placa === $("placa").value);
+    const v = veiculoEscolhido();
     if (v && v.diesel) { est.diesel = v.diesel; marcar("diesel", v.diesel); }
     atualizarDiesel();
   });
   function recalcular() {
-    const ini = lerNumero($("med-ini").value), fim = lerNumero($("med-fim").value);
-    $("litros-patio").textContent = ini != null && fim != null && fim > ini ? fmt(fim - ini, 1) + " L" : "—";
-    const l = lerNumero($("litros").value), p = lerNumero($("preco").value);
-    $("total-estrada").textContent = l > 0 && p > 0 ? "R$ " + fmt(l * p, 2) : "—";
+    const l = lerNumero($("litros").value), r = lerNumero($("valor").value);
+    $("preco-estrada").textContent = l > 0 && r > 0 ? "R$ " + fmt(r / l, 2) : "—";
   }
-  ["med-ini", "med-fim", "litros", "preco"].forEach((id) => $(id).addEventListener("input", recalcular));
+  ["litros", "valor"].forEach((id) => $(id).addEventListener("input", recalcular));
 
   function exigir(campos, idErro) {
     for (const [id, nome] of campos) {
@@ -491,13 +517,15 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
   $("btn-abastecer").addEventListener("click", async () => {
     erro("erro-abastecer", "");
     const placa = $("placa").value;
-    if (!placa) return erro("erro-abastecer", "Escolha o caminhão.");
+    if (!placa) return erro("erro-abastecer", "Escolha o veículo.");
     if (!est.diesel) return erro("erro-abastecer", "Escolha S10 ou S500.");
     const patio = est.origem === "patio";
-    const campos = patio ? [["med-ini", "o medidor no início"], ["med-fim", "o medidor no fim"]] : [["litros", "os litros"], ["preco", "o preço por litro"]];
-    if (!exigir([...campos, ["hodometro", "o hodômetro"]], "erro-abastecer")) return;
-    if (patio && lerNumero($("med-fim").value) <= lerNumero($("med-ini").value)) return erro("erro-abastecer", "O medidor no fim precisa ser maior que no início.");
-    if (!est.fotos.painel) return erro("erro-abastecer", "Tire a foto do painel com o hodômetro.");
+    const maquina = ehMaquina();
+    const campos = [["litros", "os litros"]];
+    if (!patio) campos.push(["valor", "o valor pago"]);
+    if (!maquina) campos.push(["hodometro", "o km atual"]);
+    if (!exigir(campos, "erro-abastecer")) return;
+    if (!maquina && !est.fotos.painel) return erro("erro-abastecer", "Tire a foto do painel com o km.");
     if (!patio && !est.fotos.documento) return erro("erro-abastecer", "Tire a foto da nota ou do recibo.");
 
     const btn = $("btn-abastecer");
@@ -506,17 +534,16 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     const pos = await local();
     btn.textContent = "Enviando…";
     const corpo = {
-      origem: est.origem, placa, diesel: est.diesel, hodometro: lerNumero($("hodometro").value),
-      foto_painel: est.fotos.painel, ...(pos || {}),
-      ...(patio
-        ? { medidor_inicio: lerNumero($("med-ini").value), medidor_fim: lerNumero($("med-fim").value) }
-        : { litros: lerNumero($("litros").value), preco_litro: lerNumero($("preco").value), documento: $("documento").value,
+      origem: est.origem, placa, diesel: est.diesel, litros: lerNumero($("litros").value),
+      hodometro: maquina ? null : lerNumero($("hodometro").value),
+      foto_painel: maquina ? null : est.fotos.painel, ...(pos || {}),
+      ...(patio ? { local: est.local } : { valor_total: lerNumero($("valor").value), documento: $("documento").value,
             posto: $("posto").value, foto_documento: est.fotos.documento }),
     };
     try {
       const r = await chamar("abastecer", corpo);
       const hora = new Date(r.data_hora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-      ["med-ini", "med-fim", "litros", "preco", "posto", "hodometro"].forEach((id) => { $(id).value = ""; });
+      ["litros", "valor", "posto", "hodometro"].forEach((id) => { $(id).value = ""; });
       $("placa").value = "";
       est.diesel = null;
       marcar("diesel", "");
@@ -524,8 +551,10 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       limparFoto("documento");
       recalcular();
       atualizarDiesel();
-      confirmar("Abastecimento registrado",
-        [["Caminhão", placa], ["Diesel", corpo.diesel], ["Litros", fmt(Number(r.litros), 1) + " L"], ["Hora", hora]],
+      const linhas = [["Veículo", placa], ["Diesel", corpo.diesel], ["Litros", fmt(Number(r.litros), 1) + " L"]];
+      linhas.push(patio ? ["Pátio", LOCAIS[corpo.local]] : ["Valor", "R$ " + fmt(corpo.valor_total, 2)]);
+      linhas.push(["Hora", hora]);
+      confirmar("Abastecimento registrado", linhas,
         pos ? "" : "O celular não informou o local. Na próxima vez, permita o acesso à localização.");
     } catch (e) {
       erro("erro-abastecer", e.message);
@@ -538,22 +567,20 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
 
   $("btn-chegada").addEventListener("click", async () => {
     erro("erro-chegada", "");
-    if (!exigir([["ch-s10", "o medidor S10"], ["ch-s500", "o medidor S500"]], "erro-chegada")) return;
-    if (!est.fotos.chegada) return erro("erro-chegada", "Tire a foto dos medidores.");
+    if (!exigir([["ch-enc", "o encerrante"]], "erro-chegada")) return;
+    if (!est.fotos.chegada) return erro("erro-chegada", "Tire a foto do encerrante.");
     const btn = $("btn-chegada");
     btn.disabled = true;
     btn.textContent = "Enviando…";
     try {
-      est.op.visita = await chamar("abrir_visita", {
-        medidor_s10_inicio: lerNumero($("ch-s10").value), medidor_s500_inicio: lerNumero($("ch-s500").value), foto: est.fotos.chegada });
-      $("ch-s10").value = "";
-      $("ch-s500").value = "";
+      const nova = await chamar("abrir_visita", { local: est.local, encerrante_inicio: lerNumero($("ch-enc").value), foto: est.fotos.chegada });
+      est.op.visitas = [...est.op.visitas.filter((x) => x.local !== nova.local), nova];
+      $("ch-enc").value = "";
       limparFoto("chegada");
       atualizarVisita();
       atualizarOrigem();
-      confirmar("Visita aberta",
-        [["S10 na chegada", fmt(Number(est.op.visita.medidor_s10_inicio), 1)], ["S500 na chegada", fmt(Number(est.op.visita.medidor_s500_inicio), 1)]],
-        "Agora lance cada caminhão em Abastecer, no pátio.");
+      confirmar("Visita aberta", [["Pátio", LOCAIS[nova.local]], ["Encerrante na chegada", fmt(Number(nova.encerrante_inicio))]],
+        "Agora lance cada veículo em Abastecer, no pátio.");
       est.aba = "abastecer";
     } catch (e) {
       erro("erro-chegada", e.message);
@@ -565,33 +592,42 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
 
   $("btn-saida").addEventListener("click", async () => {
     erro("erro-saida", "");
-    if (!exigir([["sa-s10", "o medidor S10"], ["sa-s500", "o medidor S500"]], "erro-saida")) return;
-    if (!est.fotos.saida) return erro("erro-saida", "Tire a foto dos medidores na saída.");
+    if (!exigir([["sa-enc", "o encerrante na saída"]], "erro-saida")) return;
+    if (!est.fotos.saida) return erro("erro-saida", "Tire a foto do encerrante na saída.");
+    if (!exigir([["pa-s10", "os litros S10 do comprovante"], ["pa-s500", "os litros S500 do comprovante"]], "erro-saida")) return;
+    if (!est.fotos.comprovante) return erro("erro-saida", "Tire a foto do comprovante do distribuidor.");
     const btn = $("btn-saida");
     btn.disabled = true;
     btn.textContent = "Enviando…";
     const v = (id) => lerNumero($(id).value);
     try {
-      const nf = { S10: v("nf-s10"), S500: v("nf-s500") };
+      const lugar = est.local;
       const r = await chamar("fechar_visita", {
-        medidor_s10_fim: v("sa-s10"), medidor_s500_fim: v("sa-s500"), nf_numero: $("nf").value,
-        nf_s10_litros: nf.S10, nf_s500_litros: nf.S500, papel_s10_litros: v("pa-s10"), papel_s500_litros: v("pa-s500"),
-        foto: est.fotos.saida });
-      est.op.visita = null;
-      ["sa-s10", "sa-s500", "nf", "nf-s10", "nf-s500", "pa-s10", "pa-s500"].forEach((id) => { $(id).value = ""; });
+        local: lugar, encerrante_fim: v("sa-enc"), comprovante_numero: $("comp").value, nf_numero: $("nf").value,
+        papel_s10_litros: v("pa-s10"), papel_s500_litros: v("pa-s500"),
+        foto: est.fotos.saida, foto_comprovante: est.fotos.comprovante });
+      est.op.visitas = est.op.visitas.filter((x) => x.local !== lugar);
+      ["sa-enc", "comp", "nf", "pa-s10", "pa-s500"].forEach((id) => { $(id).value = ""; });
       limparFoto("saida");
+      limparFoto("comprovante");
       atualizarVisita();
       atualizarOrigem();
-      // diferença de até 1 L é arredondamento de leitura
+      // conferência: encerrante x comprovante x lançamentos; até 1 L é arredondamento de leitura
+      const enc = Number(r.encerrante);
+      const comp = { S10: Number(r.comprovante_s10), S500: Number(r.comprovante_s500) };
+      const lanc = { S10: Number(r.lancado_s10), S500: Number(r.lancado_s500) };
       const difs = [];
+      if (Math.abs(enc - (comp.S10 + comp.S500)) > 1) {
+        difs.push(`O encerrante andou ${fmt(enc, 1)} L e o comprovante soma ${fmt(comp.S10 + comp.S500, 1)} L.`);
+      }
       for (const t of ["S10", "S500"]) {
-        const med = Number(r[`medido_${t.toLowerCase()}`]), lan = Number(r[`lancado_${t.toLowerCase()}`]);
-        if (Math.abs(med - lan) > 1) difs.push(`${t}: o medidor andou ${fmt(med, 1)} L e foram lançados ${fmt(lan, 1)} L.`);
-        if (nf[t] != null && Math.abs(nf[t] - med) > 1) difs.push(`${t}: a NF cobra ${fmt(nf[t], 1)} L e o medidor andou ${fmt(med, 1)} L.`);
+        if (Math.abs(comp[t] - lanc[t]) > 1) difs.push(`${t}: o comprovante tem ${fmt(comp[t], 1)} L e foram lançados ${fmt(lanc[t], 1)} L.`);
       }
       confirmar("Visita fechada", [
-        ["S10 medidor / lançado", `${fmt(Number(r.medido_s10), 1)} / ${fmt(Number(r.lancado_s10), 1)} L`],
-        ["S500 medidor / lançado", `${fmt(Number(r.medido_s500), 1)} / ${fmt(Number(r.lancado_s500), 1)} L`],
+        ["Pátio", LOCAIS[lugar]],
+        ["Encerrante andou", `${fmt(enc, 1)} L`],
+        ["S10 comprovante / lançado", `${fmt(comp.S10, 1)} / ${fmt(lanc.S10, 1)} L`],
+        ["S500 comprovante / lançado", `${fmt(comp.S500, 1)} / ${fmt(lanc.S500, 1)} L`],
       ], difs.length ? "Diferença para conferir. " + difs.join(" ") : "");
     } catch (e) {
       erro("erro-saida", e.message);
