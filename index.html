@@ -153,6 +153,10 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       </div>
       <div class="total"><span>Preço por litro</span><b class="num" id="preco-estrada">—</b></div>
       <div class="campo">
+        <label class="lembrar"><input type="checkbox" id="cheio"> Completei o tanque</label>
+        <span class="ajuda">Marque só se a bomba parou sozinha com o tanque cheio. Serve para calcular a média km/l.</span>
+      </div>
+      <div class="campo">
         <label for="documento">Documento do posto</label>
         <select id="documento">
           <option value="NF-e">NF-e no CNPJ da Bridi</option>
@@ -289,7 +293,11 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       throw new Error("Sem conexão. Confira a internet e tente de novo; nada foi perdido.");
     }
     const corpo = await r.json().catch(() => ({}));
-    if (!r.ok || !corpo.ok) throw new Error(corpo.erro || "Não foi possível enviar. Tente de novo.");
+    if (!r.ok || !corpo.ok) {
+      const e = new Error(corpo.erro || "Não foi possível enviar. Tente de novo.");
+      e.status = r.status; // 409 = precisa confirmar (ex.: km fora do esperado)
+      throw e;
+    }
     return corpo.dados;
   }
 
@@ -417,7 +425,9 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
     $("sem-visita").hidden = !(patio && !visita);
     $("btn-abastecer").disabled = patio && !visita;
     $("bloco-estrada").hidden = patio;
-    $("ajuda-litros").textContent = patio ? "O que o visor da bomba marcou para este veículo." : "Os litros da nota ou do cupom do posto.";
+    $("ajuda-litros").textContent = patio
+      ? "Complete o tanque e lance o que o visor da bomba marcou para este veículo."
+      : "Os litros da nota ou do cupom do posto.";
   }
 
   const veiculoEscolhido = () => est.op?.veiculos.find((x) => x.placa === $("placa").value);
@@ -538,12 +548,21 @@ input.codigo { letter-spacing: 0.4em; text-align: center; font-size: 26px; heigh
       hodometro: maquina ? null : lerNumero($("hodometro").value),
       foto_painel: maquina ? null : est.fotos.painel, ...(pos || {}),
       ...(patio ? { local: est.local } : { valor_total: lerNumero($("valor").value), documento: $("documento").value,
-            posto: $("posto").value, foto_documento: est.fotos.documento }),
+            posto: $("posto").value, foto_documento: est.fotos.documento, tanque_cheio: $("cheio").checked }),
     };
     try {
-      const r = await chamar("abastecer", corpo);
+      let r;
+      try {
+        r = await chamar("abastecer", corpo);
+      } catch (e) {
+        // km menor que o anterior ou salto grande: confirma com quem está lançando
+        if (e.status !== 409 || !confirm(e.message + "\n\nConfira o painel. O km digitado está certo?")) throw e;
+        btn.textContent = "Enviando…";
+        r = await chamar("abastecer", { ...corpo, confirmar_km: true });
+      }
       const hora = new Date(r.data_hora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
       ["litros", "valor", "posto", "hodometro"].forEach((id) => { $(id).value = ""; });
+      $("cheio").checked = false;
       $("placa").value = "";
       est.diesel = null;
       marcar("diesel", "");
