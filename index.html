@@ -155,15 +155,6 @@ input.codigo { letter-spacing: .4em; text-align: center; font-size: 26px; height
     <button aria-pressed="false" data-aba="visita">Caminhão-tanque</button>
   </nav>
 
-  <!-- pátio do caminhão-tanque (só pátio e gestor); o celular lembra a escolha -->
-  <div class="campo" id="campo-local" hidden>
-    <span class="rot">Pátio</span>
-    <div class="seg" id="local">
-      <button aria-pressed="false" data-v="vila_velha">Vila Velha</button>
-      <button aria-pressed="false" data-v="guarapari">BM Guarapari</button>
-    </div>
-  </div>
-
   <!-- abastecer -->
   <section class="cartao" id="tela-abastecer" hidden>
     <div class="campo" id="campo-origem">
@@ -171,6 +162,15 @@ input.codigo { letter-spacing: .4em; text-align: center; font-size: 26px; height
       <div class="seg" id="origem">
         <button aria-pressed="true" data-v="patio">No pátio</button>
         <button aria-pressed="false" data-v="estrada">Na estrada</button>
+      </div>
+    </div>
+    <!-- qual pátio (só pátio e gestor; o celular lembra a escolha). Fica logo abaixo de "Onde" quando é
+         "No pátio"; na aba Caminhão-tanque, mostrarLocal() leva este mesmo bloco para o topo da visita. -->
+    <div class="campo" id="campo-local" hidden>
+      <span class="rot" id="rot-local">Qual pátio</span>
+      <div class="seg" id="local">
+        <button aria-pressed="false" data-v="vila_velha">Vila Velha</button>
+        <button aria-pressed="false" data-v="guarapari">BM Guarapari</button>
       </div>
     </div>
     <div class="aviso atencao" id="sem-visita" hidden></div>
@@ -238,7 +238,7 @@ input.codigo { letter-spacing: .4em; text-align: center; font-size: 26px; height
 
   <!-- caminhão-tanque -->
   <section class="cartao" id="tela-visita" hidden>
-    <div class="aviso atencao" id="visita-sem-local" hidden>Escolha acima em qual pátio o caminhão-tanque está.</div>
+    <div class="aviso atencao" id="visita-sem-local" hidden>Escolha em qual pátio o caminhão-tanque está.</div>
     <div id="visita-chegada" class="campo" style="gap:14px">
       <h2>Chegada do caminhão-tanque</h2>
       <p class="muted">Antes do primeiro abastecimento, leia o encerrante na bomba do caminhão-tanque.</p>
@@ -456,10 +456,14 @@ input.codigo { letter-spacing: .4em; text-align: center; font-size: 26px; height
     atualizarVisita();
   }
 
-  // o pátio só importa no lançamento do pátio e na visita do caminhão-tanque
+  // o pátio só importa no lançamento do pátio e na visita do caminhão-tanque. No abastecimento vem logo
+  // depois de "Onde" (só com "No pátio"); na visita, no topo do cartão.
   function mostrarLocal(tela) {
     const papelPatio = est.op && est.op.papel !== "motorista";
-    $("campo-local").hidden = !(papelPatio && (tela === "visita" || (tela === "abastecer" && est.origem === "patio")));
+    const campo = $("campo-local");
+    if (tela === "visita") { $("tela-visita").prepend(campo); $("rot-local").textContent = "Pátio onde o caminhão-tanque está"; }
+    else if (tela === "abastecer") { $("campo-origem").after(campo); $("rot-local").textContent = "Qual pátio"; }
+    campo.hidden = !(papelPatio && (tela === "visita" || (tela === "abastecer" && est.origem === "patio")));
   }
 
   function atualizarOrigem() {
@@ -468,7 +472,7 @@ input.codigo { letter-spacing: .4em; text-align: center; font-size: 26px; height
     mostrarLocal(["abastecer", "visita"].find((t) => !$("tela-" + t).hidden) || "");
     $("sem-visita").innerHTML = est.local
       ? `Nenhuma visita do caminhão-tanque aberta em <b>${LOCAIS[est.local]}</b>. Abra a visita na aba <b>Caminhão-tanque</b> antes de lançar no pátio.`
-      : "Escolha acima em qual pátio você está.";
+      : "Escolha em qual pátio você está.";
     $("sem-visita").hidden = !(patio && !visita);
     $("btn-abastecer").disabled = patio && !visita;
     $("bloco-estrada").hidden = patio;
