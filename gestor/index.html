@@ -156,7 +156,8 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
     </div>
     <nav class="menu" id="menu" aria-label="Menu" hidden>
       <span id="abas" role="group" aria-label="Assunto" style="display: contents">
-        <button class="aba" aria-pressed="true" data-aba="abastecimento">Abastecimento</button>
+        <button class="aba" aria-pressed="true" data-aba="agora">Agora</button>
+        <button class="aba" aria-pressed="false" data-aba="abastecimento">Abastecimento</button>
         <button class="aba" aria-pressed="false" data-aba="rotas">Rotas (GPS)</button>
       </span>
       <span class="who" id="quem"></span>
@@ -181,6 +182,7 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
   </section>
 
   <div class="aviso erro" id="erro-geral" hidden></div>
+  <section class="tela" id="tela-agora" hidden></section>
   <section class="tela" id="tela-abastecimento" hidden></section>
   <section class="tela" id="tela-rotas" hidden></section>
   <p class="rodape" id="rodape" hidden></p>
@@ -195,7 +197,21 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
   const LIMITE_VEL = 90;
   const TOLERANCIA_L = 1;
   const $ = (id) => document.getElementById(id);
-  const est = { codigo: "", dados: null, aba: "abastecimento", mes: null, semana: null };
+  const est = { codigo: "", dados: null, aba: "agora", mes: null, semana: null };
+  // Pontos de referência cadastrados no Fulltrack (os mesmos de analise/resumo_frota.py), raio de 300 m.
+  const PONTOS = [
+    ["Pátio Bridi Vila Velha", "base", -20.35072, -40.322],
+    ["Bridi Vila Velha (2º endereço)", "base", -20.36914, -40.32511],
+    ["Base BM Guarapari", "base", -20.63073, -40.47832],
+    ["Cliente (base) Cariacica", "cliente", -20.34084, -40.40546],
+    ["Oficina Andreatta", "oficina", -20.34648, -40.4036],
+    ["Oficina mecânica Guarapari", "oficina", -20.66312, -40.50361],
+    ["Oficina mecânica (sul do ES)", "oficina", -20.79322, -40.80608],
+  ];
+  const RAIO_M = 300;
+  const SEM_GPS_H = 2;          // comunica mas a posição não atualiza há mais que isso
+  const SEM_COMUNICAR_H = 24;   // rastreador mudo (dorme com a ignição desligada, então 24 h)
+  const COLETA_ATRASADA_MIN = 15;
 
   // ---------- armazenamento (pode faltar em janela privada) ----------
   const guardar = {
@@ -296,7 +312,7 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
       $("tela-entrar").hidden = true;
       $("menu").hidden = false; $("rodape").hidden = false;
       $("quem").textContent = est.dados.nome;
-      $("rodape").textContent = "Atualizado em " + dataHora(est.dados.gerado_em) + ". Dados do formulário de abastecimento e dos relatórios do Fulltrack carregados no banco.";
+      $("rodape").textContent = "Atualizado em " + dataHora(est.dados.gerado_em) + ". Dados do formulário de abastecimento, da API do Fulltrack (a cada 5 min) e dos relatórios carregados no banco.";
       desenhar();
       return true;
     } catch (e) {
@@ -312,7 +328,7 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
   function sair() {
     est.codigo = ""; est.dados = null; guardar.gravar("");
     $("tela-entrar").hidden = false;
-    for (const id of ["menu", "rodape", "tela-abastecimento", "tela-rotas", "erro-geral"]) $(id).hidden = true;
+    for (const id of ["menu", "rodape", "tela-agora", "tela-abastecimento", "tela-rotas", "erro-geral"]) $(id).hidden = true;
     $("quem").textContent = "";
   }
   $("btn-entrar").addEventListener("click", async () => {
@@ -333,9 +349,106 @@ button.primary:disabled { opacity: .45; cursor: not-allowed; }
 
   function desenhar() {
     for (const b of document.querySelectorAll("#abas button")) b.setAttribute("aria-pressed", String(b.dataset.aba === est.aba));
+    $("tela-agora").hidden = est.aba !== "agora";
     $("tela-abastecimento").hidden = est.aba !== "abastecimento";
     $("tela-rotas").hidden = est.aba !== "rotas";
-    if (est.aba === "abastecimento") desenharAbastecimento(); else desenharRotas();
+    if (est.aba === "agora") desenharAgora();
+    else if (est.aba === "abastecimento") desenharAbastecimento(); else desenharRotas();
+  }
+
+  // ---------- aba Agora ----------
+  function distanciaM(la1, lo1, la2, lo2) {
+    const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.sqrt(a));
+  }
+  function pontoPerto(lat, lon) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || (!lat && !lon)) return null;
+    let melhor = null;
+    for (const [nome, tipo, la, lo] of PONTOS) {
+      const d = distanciaM(lat, lon, la, lo);
+      if (d <= RAIO_M && (!melhor || d < melhor.d)) melhor = { nome, tipo, d };
+    }
+    return melhor;
+  }
+  const haQuanto = (iso, agoraMs) => {
+    if (!iso) return "—";
+    const min = Math.max(0, Math.round((agoraMs - Date.parse(iso)) / 60000));
+    if (min < 1) return "agora";
+    if (min < 60) return "há " + min + " min";
+    const h = Math.floor(min / 60);
+    if (h < 48) return "há " + h + " h" + (min % 60 && h < 10 ? " " + (min % 60) + " min" : "");
+    return "há " + Math.floor(h / 24) + " dias";
+  };
+
+  function desenharAgora() {
+    const d = est.dados;
+    const raiz = $("tela-agora");
+    const a = d.agora || { status: [], km_hoje: {} };
+    const agoraMs = Date.parse(d.gerado_em) || Date.now();
+    const modelo = Object.fromEntries(d.veiculos.map((v) => [v.placa, v.modelo]));
+    const semRastreador = d.veiculos.filter((v) => v.categoria === "veiculo" && !v.rastreado).length;
+
+    if (!a.status.length) {
+      raiz.replaceChildren(cabecalho("Agora", "Situação de cada caminhão rastreado."),
+        el("div", { class: "aviso info", text: "Ainda não há leitura do GPS no banco. A coleta da API do Fulltrack (função coletar_gps) grava a cada 5 minutos." }));
+      return;
+    }
+
+    const linhas = [], alertas = [];
+    let andando = 0, ligadoParado = 0, desligado = 0;
+    for (const s of a.status) {
+      const lat = Number(s.latitude), lon = Number(s.longitude);
+      const ponto = pontoPerto(lat, lon);
+      const vel = Number(s.velocidade_kmh) || 0;
+      const situacao = s.ignicao || "—";
+      const semGpsH = s.data_gps && s.ult_comunicacao ? (Date.parse(s.ult_comunicacao) - Date.parse(s.data_gps)) / 3_600_000 : 0;
+      const mudoH = s.ult_comunicacao ? (agoraMs - Date.parse(s.ult_comunicacao)) / 3_600_000 : Infinity;
+      let selo;
+      if (situacao === "Ligado em movimento") { andando++; selo = tag("Andando · " + num(vel) + " km/h", vel > LIMITE_VEL ? "crit" : "ok"); }
+      else if (situacao === "Ligado parado") { ligadoParado++; selo = tag("Ligado parado", ponto && ponto.tipo !== "cliente" ? "neutro" : "warn"); }
+      else { desligado++; selo = tag("Desligado", "neutro"); }
+
+      const mapa = Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon)
+        ? el("a", { href: "https://www.google.com/maps?q=" + lat + "," + lon, target: "_blank", rel: "noopener", text: "mapa" }) : null;
+      const onde = el("span", {}, ponto ? ponto.nome : "Fora dos pontos cadastrados", mapa ? el("span", { class: "sub" }, mapa) : null);
+      linhas.push([
+        placa(s.placa, modelo[s.placa]),
+        selo,
+        onde,
+        el("span", {}, haQuanto(s.data_gps, agoraMs), el("span", { class: "sub", text: s.data_gps ? dataHora(s.data_gps) : "" })),
+        { v: haQuanto(s.ult_comunicacao, agoraMs), class: mudoH > SEM_COMUNICAR_H ? "ruim" : null },
+        { v: num(a.km_hoje?.[s.placa], 1) },
+        { v: num(s.odometro_gps_km) },
+      ]);
+
+      if (mudoH > SEM_COMUNICAR_H) alertas.push([placa(s.placa), tag("Sem comunicar", "crit"), { v: "O rastreador não fala desde " + dataHora(s.ult_comunicacao) + ". Pode ser bateria, chave geral desligada ou defeito.", class: "texto" }, mapa || "—"]);
+      else if (semGpsH > SEM_GPS_H) alertas.push([placa(s.placa), tag("Sem posição", "warn"), { v: "O rastreador comunica, mas a posição não muda desde " + dataHora(s.data_gps) + ". Caminhão em local coberto ou antena de GPS com problema.", class: "texto" }, mapa || "—"]);
+      if (situacao === "Ligado parado" && !(ponto && ponto.tipo !== "cliente")) alertas.push([placa(s.placa), tag("Ligado parado", "warn"), { v: "Motor ligado, parado " + (ponto ? "em " + ponto.nome : "fora do pátio") + " (" + haQuanto(s.data_gps, agoraMs) + ").", class: "texto" }, mapa || "—"]);
+      if (vel > LIMITE_VEL) alertas.push([placa(s.placa), tag("Velocidade", "crit"), { v: num(vel) + " km/h na última leitura (limite " + LIMITE_VEL + ").", class: "texto" }, mapa || "—"]);
+    }
+
+    const coletaOk = a.ultima_coleta_ok;
+    const atrasada = !coletaOk || (agoraMs - Date.parse(coletaOk)) / 60000 > COLETA_ATRASADA_MIN;
+    const avisoColeta = atrasada
+      ? el("div", { class: "aviso erro", text: "A coleta do GPS está parada: a última leitura boa foi " + (coletaOk ? dataHora(coletaOk) : "nunca") + (a.ultima_coleta?.erro ? ". Último erro: " + a.ultima_coleta.erro : "") + "." })
+      : null;
+
+    raiz.replaceChildren(...[
+      cabecalho("Agora", "Situação de cada caminhão rastreado. O banco lê a API do Fulltrack a cada 5 minutos; aperte Atualizar para ver a leitura mais nova."),
+      avisoColeta,
+      el("div", { class: "kpis" },
+        kpi("Andando", String(andando), plural(a.status.length, "rastreado", "rastreados")),
+        kpi("Ligado parado", String(ligadoParado)),
+        kpi("Desligados", String(desligado)),
+        kpi("Para conferir", String(alertas.length), alertas.length ? "veja abaixo" : "nada fora do normal"),
+      ),
+      secao("Caminhões", "Km hoje = odômetro do GPS agora menos o primeiro de hoje. É uma medida do GPS, para conferência, não o km do painel do caminhão.",
+        tabela([{ t: "Veículo" }, { t: "Situação" }, { t: "Onde" }, { t: "Última posição" }, { t: "Comunicou" }, { t: "Km hoje", n: true }, { t: "Odômetro GPS", n: true }], linhas, "Sem leitura.")),
+      secao("Para conferir", "Rastreador mudo há mais de " + SEM_COMUNICAR_H + " h, comunicando sem posição há mais de " + SEM_GPS_H + " h, motor ligado parado fora do pátio e oficina, ou acima de " + LIMITE_VEL + " km/h.",
+        tabela([{ t: "Veículo" }, { t: "O quê" }, { t: "Detalhe", texto: true }, { t: "Onde" }], alertas, "Nada fora do normal agora.")),
+      semRastreador ? el("p", { class: "notas", text: plural(semRastreador, "veículo sem rastreador não aparece", "veículos sem rastreador não aparecem") + " aqui." }) : null,
+      a.ultima_coleta_ok ? el("p", { class: "notas", text: "Última leitura do GPS: " + dataHora(a.ultima_coleta_ok) + "." }) : null,
+    ].filter(Boolean));  // replaceChildren escreveria "null" como texto
   }
 
   // ---------- aba Abastecimento ----------
